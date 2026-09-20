@@ -1,7 +1,7 @@
 var a = new node(100,200,20,4, [],"red")
 
 
-const nodes = []
+var nodes = []
 
 let camera = {
     x: 0,
@@ -30,8 +30,12 @@ function drawArrow(from, to, ) {
 
     ctx.beginPath();
     ctx.moveTo(from.x+from.r*Math.cos(angle), from.y+from.r*Math.sin(angle));
-    ctx.lineTo(to.x-to.r*Math.cos(angle), to.y-to.r*Math.sin(angle));
-    ctx.strokeStyle = "black";
+    ctx.lineTo(to.x-1.25*to.r*Math.cos(angle), to.y-1.25*to.r*Math.sin(angle));
+    const gradient = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+    gradient.addColorStop(0, from.color);
+    gradient.addColorStop(1, to.color);
+
+    ctx.strokeStyle = gradient;
     ctx.lineWidth = 5;
     ctx.stroke();
 
@@ -48,7 +52,7 @@ function drawArrow(from, to, ) {
         to.y - arrowSize * Math.sin(angle + Math.PI / 6)-to.r*Math.sin(angle)
     );
     ctx.closePath();
-    ctx.fillStyle = "black";
+    ctx.fillStyle = gradient;
     ctx.fill();
 }
 
@@ -75,8 +79,7 @@ node.prototype.draw = function() {
     return this;
 }
 function applyConnections() {
-    const desiredDistance = 300;
-    const strength = 0.005;
+    const strength = strength2;
 
     for (const node of nodes) {
         for (const parent of node.parents) {
@@ -101,7 +104,6 @@ function applyConnections() {
     }
 }
 function applyRepulsion(nodes) {
-    const strength = 5000;
 
     for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -170,8 +172,8 @@ function updateNodes() {
         n.x += n.vx;
         n.y += n.vy;
 
-        n.vx *= 0.9;
-        n.vy *= 0.9;
+        n.vx *= 0.6;
+        n.vy *= 0.6;
     }
     draw();
 }
@@ -272,12 +274,12 @@ reader.onload = (event) => {
     const data = JSON.parse(event.target.result);
 
     nodes.length = 0; // clear existing nodes
-
+    
     // Create nodes
     for (const [id, info] of Object.entries(data)) {
         nodes.push(new node(
-            Math.random() * 1000,
-            Math.random() * 1000,
+            Math.random() * 10000-5000,
+            Math.random() * 10000-5000,
             30,
             Number(id),
             [],
@@ -305,3 +307,28 @@ function intToHex(color) {
 }
 
     requestAnimationFrame(run);
+
+
+
+
+
+
+
+
+var strength = 5000
+var strength2 = .0001
+var desiredDistance = 200
+var slider = document.getElementById("repulsion");
+var slider2 = document.getElementById("distance");
+var slider3 = document.getElementById("strength");
+strength = Math.pow(slider.value,2);
+  desiredDistance  = slider2.value;
+slider.oninput = function() {
+  strength  = Math.pow(slider.value,2) ;
+}
+slider2.oninput = function() {
+  desiredDistance  = slider2.value;
+}
+slider3.oninput = function() {
+  strength2  = slider3.value / 10000;
+}
