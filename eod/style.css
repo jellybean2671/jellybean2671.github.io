@@ -20,7 +20,7 @@ body {
     background:rgba(50,50,50,.5)
 }
 #canvas {
-    height:500px;
+    height:auto;
     width:100%;
     border-radius:5px;
     background-color:white;
