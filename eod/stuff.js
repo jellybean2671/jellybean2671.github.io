@@ -413,7 +413,6 @@ var col = document.getElementById("colorpicker")
 col.oninput = function() {
     col1 = col.value;
     console.log("hi")
-    document.body.style.background = gradient()
 }
 var col1 = "#6c5ce7"
 var col2 = col1 + "86"
