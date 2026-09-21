@@ -69,15 +69,19 @@ function node(x,y,r,ID,parents,color,name,image,comment) {
     this.name = name;
     this.image = image;
     this.comment = comment;
+    this.highlight = false;
 }
 node.prototype.draw = function() {
     this.parents.forEach(parent => {
         drawArrow(parent,this)
     });
+    if (this.highlight) drawCircle(this.x,this.y,this.r*1.4,"white");
     drawCircle(this.x,this.y,this.r,this.color)
     ctx.fillStyle = "white";
     return this;
 }
+
+
 function applyConnections() {
     const strength = strength2;
 
@@ -128,16 +132,30 @@ function applyRepulsion(nodes) {
         }
     }
 }
+function darken(hex, amount) {
+  let num = parseInt(hex.slice(1), 16);
+
+  let r = (num >> 16) & 255;
+  let g = (num >> 8) & 255;
+  let b = num & 255;
+
+  r = Math.round(r * (1 - amount));
+  g = Math.round(g * (1 - amount));
+  b = Math.round(b * (1 - amount));
+
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b)
+    .toString(16)
+    .slice(1)}`;
+}
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Background gradient
     const gradient = ctx.createLinearGradient(
         0, 0,
         canvas.width, canvas.height
     );
 
-    gradient.addColorStop(0, "#1a1a2e");
-    gradient.addColorStop(1, "#253663");
+    gradient.addColorStop(0, darken(col1, .9));
+    gradient.addColorStop(1, col1);
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -171,6 +189,8 @@ function updateNodes() {
     for (const n of nodes) {
         n.x += n.vx;
         n.y += n.vy;
+        n.x *= .999
+        n.y *= .999
 
         n.vx *= 0.6;
         n.vy *= 0.6;
@@ -206,6 +226,7 @@ function getMousePosition(event) {
         y: (event.clientY - rect.top) * (canvas.height / rect.height)
     };
 }
+var tracking = false;
 canvas.addEventListener("click", (event) => {
     const screen = getMousePosition(event);
     const mouse = screenToWorld(
@@ -219,9 +240,15 @@ canvas.addEventListener("click", (event) => {
         );
 
         if (distance <= n.r) {
+            nodes.forEach(e => {
+                e.highlight = false;
+            });
+            n.highlight = true;
+            tracking = n;
             console.log("Clicked node:", n.id);
             document.getElementById("header").textContent = n.name + " #" + n.id
             document.getElementById("comment").textContent = "Comment: " + n.comment
+
         }
 
     }
@@ -232,6 +259,7 @@ let lastMouseY;
 
 canvas.addEventListener("mousedown", (event) => {
     dragging = true;
+    tracking = false;
     lastMouseX = event.clientX;
     lastMouseY = event.clientY;
 });
@@ -254,6 +282,10 @@ canvas.addEventListener("mousemove", (event) => {
 });
 function run() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (tracking !== false) {
+        camera.x = tracking.x
+        camera.y = tracking.y
+    }
     updateNodes()
     requestAnimationFrame(run);
 }
@@ -274,7 +306,47 @@ reader.onload = (event) => {
     const data = JSON.parse(event.target.result);
 
     nodes.length = 0; // clear existing nodes
-    
+    /*nodes = [new node(
+            Math.random() * 10000-5000,
+            Math.random() * 10000-5000,
+            30,
+            1,
+            [],
+            "#c2c3c3",
+            "Air",
+            "",
+            "Air describes the mixture of gases that make up a planet's atmosphere, usually Earth's. Earth's atmosphere is made up of roughly 78% nitrogen, 21% oxygen, 1% argon, and trace amounts of other gases; and is colorless and odorless on its own."),
+            new node(
+            Math.random() * 10000-5000,
+            Math.random() * 10000-5000,
+            30,
+            2,
+            [],
+            "#aa7942",
+            "Earth",
+            "",
+            "Earth is one of the elements. One of the four first elements, if you will. And it's, like, necessary. You stay on the earth. You walk on it, run on it, step on it, stand on it. Oh, and gravity. Yeah. When you fall on the earth, especially from a high distance, you'll, like, get hurt. Or something. So don't forget to stay grounded."),
+            new node(
+            Math.random() * 10000-5000,
+            Math.random() * 10000-5000,
+            30,
+            3,
+            [],
+            "#ff9500",
+            "Fire",
+            "",
+            "A natural phenomenon that occurs when organic material combusts given exposure to sufficient heat and oxygen. Controlled, this has kept humanity warm in cold times since the beginning. Uncontrolled, this has caused devastation that claimed millions upon millions and caused serious damage to everything physical across the globe."),
+            new node(
+            Math.random() * 10000-5000,
+            Math.random() * 10000-5000,
+            30,
+            4,
+            [],
+            "#0433ff",
+            "Water",
+            "",
+            "Water is an inorganic compound with the chemical formula H2O. It is a transparent, tasteless, odorless, and nearly colorless chemical substance, and it is the main constituent of Earth's hydrosphere and the fluids of all known living organisms (in which it acts as a solvent). It is vital for all known forms of life, despite not providing food energy or organic micronutrients. Its chemical formula, H2O, indicates that each of its molecules contains one oxygen and two hydrogen atoms, connected by covalent bonds. The hydrogen atoms are attached to the oxygen atom at an angle of 104.45°. In liquid form, H2O is also called 'Water' at standard temperature and pressure.")
+        ]/**/
     // Create nodes
     for (const [id, info] of Object.entries(data)) {
         nodes.push(new node(
@@ -322,7 +394,8 @@ var slider = document.getElementById("repulsion");
 var slider2 = document.getElementById("distance");
 var slider3 = document.getElementById("strength");
 strength = Math.pow(slider.value,2);
-  desiredDistance  = slider2.value;
+desiredDistance  = slider2.value;
+strength2 = slider3.value/10000;
 slider.oninput = function() {
   strength  = Math.pow(slider.value,2) ;
 }
@@ -332,3 +405,15 @@ slider2.oninput = function() {
 slider3.oninput = function() {
   strength2  = slider3.value / 10000;
 }
+
+
+
+
+var col = document.getElementById("colorpicker")
+col.oninput = function() {
+    col1 = col.value;
+    console.log("hi")
+    document.body.style.background = gradient()
+}
+var col1 = "#6c5ce7"
+var col2 = col1 + "86"

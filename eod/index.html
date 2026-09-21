@@ -4,27 +4,25 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-      <canvas id="canvas"></canvas>
-      <div style="display:flex;justify-content:center;padding:10px;background:#00000086;border-radius:5px;color:white;">
-        <label for="repulsion">Repulsion</label>
-        <input type="range" min="0" max="1000" value="250" id="repulsion">
-        <br>
-        <label for="distance">Distance</label>
-        <input type="range" min="1" max="1000" value="200" id="distance">
-        <br>
-        <label for="strength">Strength</label>
-        <input type="range" min="1" max="400" value="200" id="strength">
-      </div>
-      <div style="display:flex;">  
-        <div class="display">
-          <h1 id="header"></h1>
-          <h id="comment"></h>
-        </div>    
-        <input type="file" id="fileInput" accept=".json">
-      </div>
-
-    </div>
+  <canvas id="canvas"></canvas>
+  <div style="position:absolute;top:0px;ldisplay:flex;justify-content:center;padding:10px;background:#00000086;border-radius:5px;color:white;">
+    <label for="repulsion">Repulsion</label>
+    <input type="range" min="0" max="1000" value="250" id="repulsion">
+    <br>
+    <label for="distance">Distance</label>
+    <input type="range" min="1" max="1000" value="200" id="distance">
+    <br>
+    <label for="strength">Strength</label>
+    <input type="range" min="1" max="400" value="200" id="strength">
+    <br>
+    <label for="colorpicker">Color</label>
+    <input type="color" value="#6c5ce7" id="colorpicker">
+  </div>
+    <div class="display">
+      <h1 id="header"></h1>
+      <h id="comment"></h>
+    </div>    
+  <input type="file" id="fileInput" accept=".json">
 </body>
 </html>
 <script src="stuff.js"></script>
