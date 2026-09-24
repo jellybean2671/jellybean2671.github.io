@@ -26,20 +26,24 @@ function drawCircle(x,y,r,c) {
     ctx.fill();
 }
 function drawArrow(from, to, ) {
+    var fromcolor = from.highlight ? "white" : from.color
+    var tocolor = from.highlight ? "white" : to.color
+    var fromcolor = to.highlight ? "yellow" : fromcolor
+    var tocolor = to.highlight ? "yellow" : tocolor
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
 
     ctx.beginPath();
     ctx.moveTo(from.x+from.r*Math.cos(angle), from.y+from.r*Math.sin(angle));
     ctx.lineTo(to.x-1.25*to.r*Math.cos(angle), to.y-1.25*to.r*Math.sin(angle));
     const gradient = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-    gradient.addColorStop(0, from.color);
-    gradient.addColorStop(1, to.color);
+    gradient.addColorStop(0, fromcolor);
+    gradient.addColorStop(1, tocolor);
 
     ctx.strokeStyle = gradient;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = from.hightlight||to.hightlight ? 10 : 5;
     ctx.stroke();
 
-    const arrowSize = 40;
+    const arrowSize = from.hightlight||to.hightlight ? 60 : 40;
 
     ctx.beginPath();
     ctx.moveTo(to.x-to.r*Math.cos(angle), to.y-to.r*Math.sin(angle));
@@ -58,13 +62,14 @@ function drawArrow(from, to, ) {
 
 
 function node(x,y,r,ID,parents,color,name,image,comment) {
+    this.parents = parents;
+    this.children = [];
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
     this.r = r;
     this.id = ID;
-    this.parents = parents;
     this.color = color;
     this.name = name;
     this.image = image;
@@ -84,9 +89,10 @@ node.prototype.draw = function() {
 
 function applyConnections() {
     const strength = strength2;
-
-    for (const node of nodes) {
-        for (const parent of node.parents) {
+    for (const node of nodes || []) {
+        if (!node) continue;
+        for (const parent of node.parents || []) {
+            if (!parent) continue;
             const dx = node.x - parent.x;
             const dy = node.y - parent.y;
 
@@ -108,7 +114,6 @@ function applyConnections() {
     }
 }
 function applyRepulsion(nodes) {
-
     for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
             const a = nodes[i];
@@ -124,11 +129,21 @@ function applyRepulsion(nodes) {
             const fx = (dx / distance) * force;
             const fy = (dy / distance) * force;
 
-            a.vx += fx;
-            a.vy += fy;
+            a.vx += fx * (b.r/10);
+            a.vy += fy * (b.r/10);
 
-            b.vx -= fx;
-            b.vy -= fy;
+            b.vx -= fx * (a.r/10);
+            b.vy -= fy * (a.r/10);
+        }
+    }
+}
+function clampVelo(nodes) {
+    for (const node of nodes) {
+        for (const parent of node.parents) {
+            node.vx = Math.max(-maxspeed,Math.min(maxspeed,node.vx))
+            node.vy = Math.max(-maxspeed,Math.min(maxspeed,node.vy))
+            parent.vx = Math.max(-maxspeed,Math.min(maxspeed,parent.vx))
+            parent.vy = Math.max(-maxspeed,Math.min(maxspeed,parent.vy))
         }
     }
 }
@@ -174,10 +189,18 @@ function draw() {
     ctx.font = "16px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
+    ctx.fillStyle = "black";
+
+    nodes.forEach(e => {
+        ctx.fillText(e.name, e.x + 1, e.y + (e.highlight ? 1.4 : 1) * e.r + 9);
+    });
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
     ctx.fillStyle = "white";
 
     nodes.forEach(e => {
-        ctx.fillText(e.name, e.x, e.y + e.r + 8);
+        ctx.fillText(e.name, e.x, e.y + (e.highlight ? 1.4 : 1) * e.r + 8);
     });
 
     ctx.restore();
@@ -185,15 +208,21 @@ function draw() {
 function updateNodes() {
     applyConnections(nodes);
     applyRepulsion(nodes);
-
+    clampVelo(nodes);
     for (const n of nodes) {
-        n.x += n.vx;
-        n.y += n.vy;
-        n.x *= .999
-        n.y *= .999
+        if (n === dragging) {
+            n.vx = 0;
+            n.vy = 0;
+        } else {
+            n.x += n.vx;
+            n.y += n.vy;
+            n.x *= .999
+            n.y *= .999
 
-        n.vx *= 0.6;
-        n.vy *= 0.6;
+            n.vx *= 0.6;
+            n.vy *= 0.6;
+        }
+
     }
     draw();
 }
@@ -205,7 +234,7 @@ canvas.addEventListener("wheel", (event) => {
     camera.zoom *= zoomFactor;
 
     camera.zoom = Math.max(
-        0.1,
+        0.01,
         Math.min(camera.zoom, 5)
     );
 });
@@ -232,7 +261,6 @@ canvas.addEventListener("click", (event) => {
     const mouse = screenToWorld(
         screen.x,screen.y
     );
-
     for (const n of nodes) {
         const distance = Math.hypot(
             mouse.x - n.x,
@@ -243,8 +271,10 @@ canvas.addEventListener("click", (event) => {
             nodes.forEach(e => {
                 e.highlight = false;
             });
-            n.highlight = true;
-            tracking = n;
+            if (!dragging) {
+                n.highlight = true;
+                tracking = n;
+            }
             console.log("Clicked node:", n.id);
             document.getElementById("header").textContent = n.name + " #" + n.id
             document.getElementById("comment").textContent = "Comment: " + n.comment
@@ -259,6 +289,20 @@ let lastMouseY;
 
 canvas.addEventListener("mousedown", (event) => {
     dragging = true;
+    const screen = getMousePosition(event);
+    const mouse = screenToWorld(
+        screen.x,screen.y
+    );
+    for (const n of nodes) {
+        const distance = Math.hypot(
+            mouse.x - n.x,
+            mouse.y - n.y
+        );
+
+        if (distance <= n.r) {
+            dragging = n;
+        }
+    }
     tracking = false;
     lastMouseX = event.clientX;
     lastMouseY = event.clientY;
@@ -270,30 +314,30 @@ canvas.addEventListener("mouseup", () => {
 
 canvas.addEventListener("mousemove", (event) => {
     if (!dragging) return;
-
+    const screen = getMousePosition(event);
+    const mouse = screenToWorld(
+        screen.x,screen.y
+    );
     const dx = event.clientX - lastMouseX;
     const dy = event.clientY - lastMouseY;
-
-    camera.x -= dx / camera.zoom;
-    camera.y -= dy / camera.zoom;
+    if (dragging === true) {
+        camera.x -= dx / camera.zoom;
+        camera.y -= dy / camera.zoom;
+        
+    } else {
+        dragging.x = mouse.x
+        dragging.y = mouse.y
+    }
 
     lastMouseX = event.clientX;
     lastMouseY = event.clientY;
 });
 function run() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (tracking !== false) {
-        camera.x = tracking.x
-        camera.y = tracking.y
-    }
+
     updateNodes()
     requestAnimationFrame(run);
 }
-
-
-
-
-
 const fileInput = document.getElementById("fileInput");
 
 fileInput.addEventListener("change", (event) => {
@@ -361,6 +405,7 @@ reader.onload = (event) => {
             info.comment
         ));
     }
+    console.log(nodes.length)
 
     // Connect parents
     for (const [id, info] of Object.entries(data)) {
@@ -372,6 +417,10 @@ reader.onload = (event) => {
             )
             .filter(parent => parent !== undefined);
     }
+    nodes.forEach(n => {
+        n.children = nodes.filter(e => n.parents.includes(e));
+        n.r = 20 + 10 * n.children.length;
+    })
 };
     reader.readAsText(file);})
 function intToHex(color) {
@@ -390,12 +439,15 @@ function intToHex(color) {
 var strength = 5000
 var strength2 = .0001
 var desiredDistance = 200
+var maxspeed = 200;
 var slider = document.getElementById("repulsion");
 var slider2 = document.getElementById("distance");
 var slider3 = document.getElementById("strength");
+var slider4 = document.getElementById("maxspeed");
 strength = Math.pow(slider.value,2);
 desiredDistance  = slider2.value;
 strength2 = slider3.value/10000;
+maxspeed = slider4.value
 slider.oninput = function() {
   strength  = Math.pow(slider.value,2) ;
 }
@@ -405,7 +457,9 @@ slider2.oninput = function() {
 slider3.oninput = function() {
   strength2  = slider3.value / 10000;
 }
-
+slider4.oninput = function() {
+  maxspeed  = slider4.value;
+}
 
 
 
